@@ -12,6 +12,7 @@ import { formatDate, formatBytes } from '../../utils/helpers';
 
 export interface ProjectsPageOptions {
   projectStore: ProjectStore;
+  onHome?: () => void;
   onProjectSelected?: (projectId: string) => void;
   onNewProject?: (projectId: string) => void;
 }
@@ -85,7 +86,10 @@ export class ProjectsPage {
       <div class="page projects-page">
         <div class="page-header">
           <h1>ISMS Projects</h1>
-          <button class="btn btn-primary" id="btn-new-project">+ New Project</button>
+          <div class="page-header-actions">
+            <button class="btn btn-tertiary" id="btn-home">Home</button>
+            <button class="btn btn-primary" id="btn-new-project">+ New Project</button>
+          </div>
         </div>
         ${projectsHtml}
       </div>
@@ -152,6 +156,11 @@ export class ProjectsPage {
     const newProjectBtn = this.container.querySelector('#btn-new-project');
     newProjectBtn?.addEventListener('click', () => {
       this.newProjectDialog?.open();
+    });
+
+    const homeBtn = this.container.querySelector('#btn-home');
+    homeBtn?.addEventListener('click', () => {
+      this.options.onHome?.();
     });
 
     // Project open buttons

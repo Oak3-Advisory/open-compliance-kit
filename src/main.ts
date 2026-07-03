@@ -51,11 +51,12 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
 
   try {
     const projectStore = appOrchestrator.getProjectStore()
+    const routeContainer = renderAppShell(app)
 
     switch (route.type) {
       case 'home':
-        app.innerHTML = ''
-        app.appendChild(renderHomePage())
+        routeContainer.innerHTML = ''
+        routeContainer.appendChild(renderHomePage())
         attachHomeEventListeners()
         currentPage = null
         break
@@ -63,6 +64,9 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
       case 'projects':
         currentPage = new ProjectsPage({
           projectStore,
+          onHome: () => {
+            router.navigate({ type: 'home' })
+          },
           onProjectSelected: (projectId) => {
             router.navigate({ type: 'project', projectId })
           },
@@ -70,8 +74,8 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
             router.navigate({ type: 'project', projectId })
           },
         })
-        app.innerHTML = ''
-        await currentPage.mount(app)
+        routeContainer.innerHTML = ''
+        await currentPage.mount(routeContainer)
         break
 
       case 'project':
@@ -82,13 +86,13 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
             router.navigate({ type: 'projects' })
           },
         })
-        app.innerHTML = ''
-        await currentPage.mount(app)
+        routeContainer.innerHTML = ''
+        await currentPage.mount(routeContainer)
         break
 
       case 'settings':
-        app.innerHTML = ''
-        app.appendChild(renderSettingsPage())
+        routeContainer.innerHTML = ''
+        routeContainer.appendChild(renderSettingsPage())
         currentPage = null
         break
 
@@ -102,13 +106,13 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
             router.navigate({ type: 'projects' })
           },
         })
-        app.innerHTML = ''
-        await currentPage.mount(app)
+        routeContainer.innerHTML = ''
+        await currentPage.mount(routeContainer)
         break
 
       default:
-        app.innerHTML = ''
-        app.appendChild(renderHomePage())
+        routeContainer.innerHTML = ''
+        routeContainer.appendChild(renderHomePage())
         attachHomeEventListeners()
         currentPage = null
     }
@@ -116,6 +120,33 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
     console.error('[renderRoute] Error:', err)
     app.replaceChildren(renderErrorPage('Page Load Error', err instanceof Error ? err.message : String(err), true))
   }
+}
+
+function renderAppShell(app: HTMLElement): HTMLElement {
+  app.innerHTML = `
+    <header class="app-header">
+      <button type="button" class="app-brand" id="btn-app-home" aria-label="Open Compliance Kit home">
+        <img src="/favicon.svg" alt="Open Compliance Kit" class="app-logo" />
+        <span class="app-brand-copy">
+          <span class="app-brand-text">Open Compliance Kit</span>
+          <span class="app-brand-subtitle">Local-first ISMS</span>
+        </span>
+      </button>
+    </header>
+    <main id="route-container"></main>
+  `
+
+  const homeButton = app.querySelector('#btn-app-home')
+  homeButton?.addEventListener('click', () => {
+    router.navigate({ type: 'home' })
+  })
+
+  const routeContainer = app.querySelector('#route-container') as HTMLElement | null
+  if (!routeContainer) {
+    throw new Error('Route container not found')
+  }
+
+  return routeContainer
 }
 
 function renderErrorPage(title: string, message: string, includeHomeButton = false): HTMLElement {

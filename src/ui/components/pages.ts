@@ -15,35 +15,66 @@ export function renderHomePage(): HTMLElement {
   container.className = 'page home-page';
 
   container.innerHTML = `
-    <div class="hero">
-      <h1>Open Compliance Kit</h1>
-      <p>Browser-only ISMS tool for risk and compliance management</p>
-      
-      <div class="cta-buttons">
-        <button id="btn-new-project" class="btn btn-primary">
-          New Project
-        </button>
-        <button id="btn-view-projects" class="btn btn-secondary">
-          View Projects
-        </button>
-        <button id="btn-import" class="btn btn-tertiary">
-          Import Backup
-        </button>
-      </div>
-    </div>
+    <section class="home-hero-layout">
+      <div class="home-hero-panel">
+        <p class="home-kicker">Free · Open Source · Browser-based</p>
+        <p class="home-eyebrow">Local-first ISMS workspace</p>
+        <h1>Open Compliance Kit</h1>
+        <p class="home-subtitle">Build a structured ISMS workspace directly in your browser. No account. No data upload. No server dependency for core use.</p>
 
-    <div class="info-section">
-      <h2>Your data is stored locally in this browser.</h2>
-      <p>There is no server copy. Create encrypted backups to avoid data loss.</p>
-      
-      <div class="storage-info">
-        <h3>Storage Options</h3>
-        <ul>
-          <li><strong>Browser Vault:</strong> Stored privately by your browser for this website. Best for quick local use.</li>
-          <li><strong>Encrypted Backup:</strong> Download a password-protected backup that can restore your project and documents on another browser or device.</li>
+        <div class="cta-buttons home-cta-buttons">
+          <button id="btn-new-project" class="btn btn-primary">
+            Create Project
+          </button>
+          <button id="btn-view-projects" class="btn btn-secondary">
+            Open Projects
+          </button>
+          <button id="btn-import" class="btn btn-tertiary">
+            Import Backup
+          </button>
+        </div>
+
+        <p class="home-note">No account required. No data upload. Works from static hosting.</p>
+
+        <ul class="home-proof-points" aria-label="Key homepage claims">
+          <li>Local browser storage</li>
+          <li>Encrypted backup and restore</li>
+          <li>Offline-first after load</li>
+          <li>OPFS with IndexedDB fallback</li>
         </ul>
       </div>
-    </div>
+
+      <aside class="home-trust-panel" aria-label="Data storage overview">
+        <p class="home-panel-label">Privacy and security</p>
+        <h2>Your data stays local.</h2>
+        <p>Data is stored in browser-managed storage for this website and never sent to a server by default.</p>
+        <ul>
+          <li><strong>Browser vault:</strong> Fast local project work in this browser profile.</li>
+          <li><strong>Encrypted backup:</strong> Export a passphrase-protected file for recovery and transfer.</li>
+          <li><strong>Progressive storage:</strong> Uses OPFS when available with IndexedDB fallback.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="home-highlights" aria-label="Core capabilities">
+      <p class="home-section-label">How it works</p>
+      <p class="home-section-intro">Move from project setup to risk treatment and implementation tracking with a structured, repeatable workflow.</p>
+      <article class="home-feature-card">
+        <p class="home-step-number" aria-hidden="true">01</p>
+        <h3>Risk and treatment flow</h3>
+        <p>Track identified risks, score consistently, and plan treatment actions with clear ownership.</p>
+      </article>
+      <article class="home-feature-card">
+        <p class="home-step-number" aria-hidden="true">02</p>
+        <h3>Control implementation tracking</h3>
+        <p>Map controls, monitor status, and link evidence across reviews and operational activities.</p>
+      </article>
+      <article class="home-feature-card">
+        <p class="home-step-number" aria-hidden="true">03</p>
+        <h3>Portable project backups</h3>
+        <p>Create encrypted exports you can restore on another browser or device without backend lock-in.</p>
+      </article>
+    </section>
   `;
 
   return container;
