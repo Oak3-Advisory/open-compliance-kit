@@ -505,6 +505,10 @@ export class ProjectStore {
   async createProject(input: {
     name: string;
     description?: string;
+    organizationName?: string;
+    owner?: string;
+    primaryFramework?: string;
+    lifecycleStatus?: Project['lifecycleStatus'];
   }): Promise<Project> {
     try {
       const projectId = generateId();
@@ -514,6 +518,10 @@ export class ProjectStore {
         id: projectId,
         name: input.name,
         description: input.description || '',
+        organizationName: input.organizationName?.trim() || undefined,
+        owner: input.owner?.trim() || undefined,
+        primaryFramework: input.primaryFramework?.trim() || undefined,
+        lifecycleStatus: input.lifecycleStatus || 'draft',
         controlIdSettings: this.normalizeControlIdSettings(),
         controlFrameworks: this.normalizeControlFrameworks(),
         createdAt: now,
@@ -637,6 +645,16 @@ export class ProjectStore {
       const updated: Project = {
         ...existing,
         ...updates,
+        organizationName: updates.organizationName === undefined
+          ? existing.organizationName
+          : updates.organizationName?.trim() || undefined,
+        owner: updates.owner === undefined
+          ? existing.owner
+          : updates.owner?.trim() || undefined,
+        primaryFramework: updates.primaryFramework === undefined
+          ? existing.primaryFramework
+          : updates.primaryFramework?.trim() || undefined,
+        lifecycleStatus: updates.lifecycleStatus || existing.lifecycleStatus || 'draft',
         controlIdSettings: this.normalizeControlIdSettings({
           ...existing.controlIdSettings,
           ...updates.controlIdSettings,

@@ -43,12 +43,26 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
+  organizationName?: string;
+  owner?: string;
+  primaryFramework?: string;
+  lifecycleStatus?: ProjectLifecycleStatus;
   controlIdSettings?: ControlIdSettings;
   controlFrameworks?: string[];
   storageUsageBytes: number;
   createdAt: string;
   updatedAt: string;
 }
+
+export type ProjectLifecycleStatus =
+  | 'draft'
+  | 'scope_defined'
+  | 'risks_assessed'
+  | 'controls_selected'
+  | 'evidence_in_progress'
+  | 'ready_for_review'
+  | 'audit_ready'
+  | 'archived';
 
 export interface ControlIdSettings {
   mode: 'manual' | 'auto';

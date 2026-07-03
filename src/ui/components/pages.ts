@@ -17,62 +17,54 @@ export function renderHomePage(): HTMLElement {
   container.innerHTML = `
     <section class="home-hero-layout">
       <div class="home-hero-panel">
-        <p class="home-kicker">Free · Open Source · Browser-based</p>
         <p class="home-eyebrow">Local-first ISMS workspace</p>
         <h1>Open Compliance Kit</h1>
-        <p class="home-subtitle">Build a structured ISMS workspace directly in your browser. No account. No data upload. No server dependency for core use.</p>
+        <p class="home-subtitle">Build and maintain your ISMS directly in this browser.</p>
 
         <div class="cta-buttons home-cta-buttons">
           <button id="btn-new-project" class="btn btn-primary">
-            Create Project
+            Create ISMS project
           </button>
           <button id="btn-view-projects" class="btn btn-secondary">
-            Open Projects
+            Open existing project
           </button>
           <button id="btn-import" class="btn btn-tertiary">
-            Import Backup
+            Import encrypted backup
           </button>
         </div>
 
-        <p class="home-note">No account required. No data upload. Works from static hosting.</p>
-
-        <ul class="home-proof-points" aria-label="Key homepage claims">
-          <li>Local browser storage</li>
-          <li>Encrypted backup and restore</li>
-          <li>Offline-first after load</li>
-          <li>OPFS with IndexedDB fallback</li>
-        </ul>
+        <p class="home-note">No account. No default upload. Export backups when needed.</p>
       </div>
 
       <aside class="home-trust-panel" aria-label="Data storage overview">
-        <p class="home-panel-label">Privacy and security</p>
+        <p class="home-panel-label">Storage and recovery</p>
         <h2>Your data stays local.</h2>
-        <p>Data is stored in browser-managed storage for this website and never sent to a server by default.</p>
+        <p>Stored in browser-managed storage for this site.</p>
         <ul>
-          <li><strong>Browser vault:</strong> Fast local project work in this browser profile.</li>
-          <li><strong>Encrypted backup:</strong> Export a passphrase-protected file for recovery and transfer.</li>
-          <li><strong>Progressive storage:</strong> Uses OPFS when available with IndexedDB fallback.</li>
+          <li><strong>Browser vault:</strong> fast local project work.</li>
+          <li><strong>Encrypted backup:</strong> passphrase-protected recovery file.</li>
+          <li><strong>Progressive storage:</strong> OPFS or IndexedDB fallback.</li>
         </ul>
       </aside>
     </section>
 
     <section class="home-highlights" aria-label="Core capabilities">
-      <p class="home-section-label">How it works</p>
-      <p class="home-section-intro">Move from project setup to risk treatment and implementation tracking with a structured, repeatable workflow.</p>
+      <p class="home-section-label">How local-first storage works</p>
+      <p class="home-section-intro">Set up a project, assess risk, and track implementation.</p>
       <article class="home-feature-card">
         <p class="home-step-number" aria-hidden="true">01</p>
         <h3>Risk and treatment flow</h3>
-        <p>Track identified risks, score consistently, and plan treatment actions with clear ownership.</p>
+        <p>Identify, score, and treat risks with clear ownership.</p>
       </article>
       <article class="home-feature-card">
         <p class="home-step-number" aria-hidden="true">02</p>
         <h3>Control implementation tracking</h3>
-        <p>Map controls, monitor status, and link evidence across reviews and operational activities.</p>
+        <p>Map controls, track status, and link evidence.</p>
       </article>
       <article class="home-feature-card">
         <p class="home-step-number" aria-hidden="true">03</p>
         <h3>Portable project backups</h3>
-        <p>Create encrypted exports you can restore on another browser or device without backend lock-in.</p>
+        <p>Export encrypted backups for restore on another browser or device.</p>
       </article>
     </section>
   `;

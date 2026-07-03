@@ -67,6 +67,9 @@ async function renderRoute(app: HTMLElement, route: Route): Promise<void> {
           onHome: () => {
             router.navigate({ type: 'home' })
           },
+          onImportBackup: () => {
+            router.navigate({ type: 'import' })
+          },
           onProjectSelected: (projectId) => {
             router.navigate({ type: 'project', projectId })
           },

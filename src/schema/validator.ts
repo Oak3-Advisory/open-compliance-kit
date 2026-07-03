@@ -373,12 +373,27 @@ const MAX_SHORT_TEXT_LENGTH = 255;
 
     export function validateProject(value: unknown): Project {
       const record = assertPlainObject(value, 'project');
-      validateAllowedKeys(record, ['id', 'name', 'description', 'controlIdSettings', 'controlFrameworks', 'storageUsageBytes', 'createdAt', 'updatedAt'], 'project');
+      validateAllowedKeys(record, ['id', 'name', 'description', 'organizationName', 'owner', 'primaryFramework', 'lifecycleStatus', 'controlIdSettings', 'controlFrameworks', 'storageUsageBytes', 'createdAt', 'updatedAt'], 'project');
 
       return {
         id: validateSafeId(record.id, 'id'),
         name: validateString(record.name, 'name', MAX_PROJECT_NAME_LENGTH),
         description: validateOptionalString(record.description, 'description', MAX_DESCRIPTION_LENGTH),
+        organizationName: validateOptionalString(record.organizationName, 'organizationName', MAX_PROJECT_NAME_LENGTH),
+        owner: validateOptionalString(record.owner, 'owner', MAX_SHORT_TEXT_LENGTH),
+        primaryFramework: validateOptionalString(record.primaryFramework, 'primaryFramework', MAX_SHORT_TEXT_LENGTH),
+        lifecycleStatus: record.lifecycleStatus === undefined
+          ? undefined
+          : validateEnum(record.lifecycleStatus, 'lifecycleStatus', [
+              'draft',
+              'scope_defined',
+              'risks_assessed',
+              'controls_selected',
+              'evidence_in_progress',
+              'ready_for_review',
+              'audit_ready',
+              'archived',
+            ]),
         controlIdSettings: record.controlIdSettings === undefined ? undefined : validateControlIdSettings(record.controlIdSettings),
         controlFrameworks: validateStringArray(record.controlFrameworks, 'controlFrameworks', MAX_SHORT_TEXT_LENGTH),
         storageUsageBytes: validateNonNegativeInteger(record.storageUsageBytes, 'storageUsageBytes', 10 * 1024 * 1024 * 1024),
