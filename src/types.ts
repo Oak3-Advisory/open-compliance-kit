@@ -44,6 +44,7 @@ export interface Project {
   name: string;
   description?: string;
   controlIdSettings?: ControlIdSettings;
+  controlFrameworks?: string[];
   storageUsageBytes: number;
   createdAt: string;
   updatedAt: string;
@@ -182,6 +183,7 @@ export interface Control {
   owner?: string;
   testMethod: string;
   linkedRiskIds?: string[];
+  linkedFrameworks?: string[];
   linkedRequirementIds?: string[];
   linkedEvidenceIds?: string[];
   implementationStatus: 'not_started' | 'planned' | 'implemented' | 'partially_implemented' | 'not_applicable';

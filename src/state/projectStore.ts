@@ -44,6 +44,7 @@ import {
   exportVaultEncrypted,
   importVaultEncrypted,
 } from '../import-export/packageFormat';
+import type { FrameworkSeedControl } from '../frameworks/types';
 
 // Event emitter for store updates
 type ProjectStoreListener = (event: ProjectStoreEvent) => void;
@@ -51,6 +52,11 @@ type ProjectStoreListener = (event: ProjectStoreEvent) => void;
 export interface ProjectStoreEvent {
   type: 'projectCreated' | 'projectUpdated' | 'projectDeleted' | 'projectLoaded' | 'projectsLoaded' | 'error';
   payload: any;
+}
+
+export interface FrameworkImportResult {
+  created: number;
+  skipped: number;
 }
 
 export class ProjectStore {
@@ -66,6 +72,13 @@ export class ProjectStore {
     padding: 3,
     nextSequence: 1,
   };
+
+  private static readonly DEFAULT_CONTROL_FRAMEWORKS = [
+    'ISO 27001',
+    'NIST CSF',
+    'SOC2',
+    'CIS Critical Security Controls',
+  ];
 
   constructor(storageManager: any) {
     this.storageManager = storageManager;
@@ -137,6 +150,57 @@ export class ProjectStore {
     };
   }
 
+  private normalizeControlFrameworks(input?: string[]): string[] {
+    const source = Array.isArray(input) && input.length > 0
+      ? input
+      : ProjectStore.DEFAULT_CONTROL_FRAMEWORKS;
+
+    const deduped = new Map<string, string>();
+    for (const item of source) {
+      const trimmed = item.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      if (!/^[A-Za-z0-9][A-Za-z0-9 .:/+-]{0,63}$/.test(trimmed)) {
+        continue;
+      }
+
+      const key = trimmed.toLowerCase();
+      if (!deduped.has(key)) {
+        deduped.set(key, trimmed);
+      }
+    }
+
+    const normalized = Array.from(deduped.values());
+    return normalized.length > 0 ? normalized : [...ProjectStore.DEFAULT_CONTROL_FRAMEWORKS];
+  }
+
+  private normalizeFrameworkLinks(input?: string[]): string[] {
+    if (!Array.isArray(input) || input.length === 0) {
+      return [];
+    }
+
+    const deduped = new Map<string, string>();
+    for (const value of input) {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      if (!/^[A-Za-z0-9][A-Za-z0-9 .:/+-]{0,63}$/.test(trimmed)) {
+        continue;
+      }
+
+      const key = trimmed.toLowerCase();
+      if (!deduped.has(key)) {
+        deduped.set(key, trimmed);
+      }
+    }
+
+    return Array.from(deduped.values());
+  }
+
   private normalizeControlIdValue(value: string): string {
     return value.trim().toUpperCase();
   }
@@ -187,6 +251,112 @@ export class ProjectStore {
     return this.updateProject(projectId, {
       controlIdSettings: merged,
     });
+  }
+
+  async getControlFrameworks(projectId: string): Promise<string[]> {
+    const project = await this.getProject(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    return this.normalizeControlFrameworks(project.controlFrameworks);
+  }
+
+  async updateControlFrameworks(projectId: string, frameworks: string[]): Promise<Project> {
+    const existing = await this.getProject(projectId);
+    if (!existing) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    return this.updateProject(projectId, {
+      controlFrameworks: this.normalizeControlFrameworks(frameworks),
+    });
+  }
+
+  async importFrameworkControls(
+    projectId: string,
+    frameworkName: string,
+    controlsToImport: FrameworkSeedControl[]
+  ): Promise<FrameworkImportResult> {
+    const project = await this.getProject(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    if (!frameworkName.trim()) {
+      throw new Error('Framework name is required for import');
+    }
+
+    const frameworkLabel = frameworkName.trim();
+    const existingControls = await this.getControls(projectId);
+    const usedControlIds = new Set(
+      existingControls
+        .map((control) => control.controlId)
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .map((value) => value.toUpperCase())
+    );
+
+    const now = new Date().toISOString();
+    let created = 0;
+    let skipped = 0;
+
+    for (const entry of controlsToImport) {
+      const normalizedControlId = this.normalizeControlIdValue(entry.controlId);
+      this.validateControlIdValue(normalizedControlId);
+
+      if (usedControlIds.has(normalizedControlId.toUpperCase())) {
+        skipped += 1;
+        continue;
+      }
+
+      const description = `Imported from ${frameworkLabel} (${entry.function} / ${entry.category}).`;
+      const control: Control = {
+        id: generateId(),
+        projectId,
+        controlId: normalizedControlId,
+        name: entry.title,
+        objective: entry.title,
+        description,
+        frequency: 'as_needed',
+        controlType: 'preventive',
+        owner: undefined,
+        testMethod: 'Review implementation evidence and operational effectiveness.',
+        linkedRiskIds: [],
+        linkedFrameworks: [frameworkLabel],
+        linkedRequirementIds: [],
+        linkedEvidenceIds: [],
+        implementationStatus: 'not_started',
+        effectivenessRating: 'not_tested',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await this.storageManager.saveRecord('controls', control);
+      usedControlIds.add(normalizedControlId.toUpperCase());
+      created += 1;
+    }
+
+    const updatedFrameworks = this.normalizeControlFrameworks([
+      ...(project.controlFrameworks || []),
+      frameworkLabel,
+    ]);
+
+    await this.updateProject(projectId, {
+      controlFrameworks: updatedFrameworks,
+    });
+
+    this.emit({
+      type: 'projectUpdated',
+      payload: {
+        projectId,
+        type: 'frameworkControlsImported',
+        frameworkName: frameworkLabel,
+        created,
+        skipped,
+      },
+    });
+
+    return { created, skipped };
   }
 
   async getNextControlIdSuggestion(projectId: string): Promise<string> {
@@ -345,6 +515,7 @@ export class ProjectStore {
         name: input.name,
         description: input.description || '',
         controlIdSettings: this.normalizeControlIdSettings(),
+        controlFrameworks: this.normalizeControlFrameworks(),
         createdAt: now,
         updatedAt: now,
         storageUsageBytes: 0,
@@ -397,6 +568,7 @@ export class ProjectStore {
         const normalizedProject: Project = {
           ...hydratedProject,
           controlIdSettings: this.normalizeControlIdSettings(hydratedProject.controlIdSettings),
+          controlFrameworks: this.normalizeControlFrameworks(hydratedProject.controlFrameworks),
         };
 
         this.projectsCache.set(projectId, normalizedProject);
@@ -426,6 +598,7 @@ export class ProjectStore {
       const projects = this.hydrateRecords('project', rawProjects, validateProject).map((project) => ({
         ...project,
         controlIdSettings: this.normalizeControlIdSettings(project.controlIdSettings),
+        controlFrameworks: this.normalizeControlFrameworks(project.controlFrameworks),
       }));
       
       // Populate cache
@@ -468,6 +641,7 @@ export class ProjectStore {
           ...existing.controlIdSettings,
           ...updates.controlIdSettings,
         }),
+        controlFrameworks: this.normalizeControlFrameworks(updates.controlFrameworks ?? existing.controlFrameworks),
         id: existing.id, // Never change ID
         createdAt: existing.createdAt, // Never change creation date
         updatedAt: new Date().toISOString(),
@@ -1184,6 +1358,7 @@ export class ProjectStore {
     testMethod: string;
     implementationStatus: Control['implementationStatus'];
     linkedRiskIds?: string[];
+    linkedFrameworks?: string[];
     linkedRequirementIds?: string[];
     linkedEvidenceIds?: string[];
   }): Promise<Control> {
@@ -1225,6 +1400,7 @@ export class ProjectStore {
         owner: input.owner,
         testMethod: input.testMethod,
         linkedRiskIds: input.linkedRiskIds || [],
+        linkedFrameworks: this.normalizeFrameworkLinks(input.linkedFrameworks),
         linkedRequirementIds: input.linkedRequirementIds || [],
         linkedEvidenceIds: input.linkedEvidenceIds || [],
         implementationStatus: input.implementationStatus,
@@ -1348,6 +1524,7 @@ export class ProjectStore {
         ...existing,
         ...updates,
         controlId: normalizedControlId,
+        linkedFrameworks: this.normalizeFrameworkLinks(updates.linkedFrameworks ?? existing.linkedFrameworks),
         linkedEvidenceIds: updates.linkedEvidenceIds ?? existing.linkedEvidenceIds ?? [],
         id: existing.id,
         projectId: existing.projectId,

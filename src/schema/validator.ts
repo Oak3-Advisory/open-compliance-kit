@@ -373,13 +373,14 @@ const MAX_SHORT_TEXT_LENGTH = 255;
 
     export function validateProject(value: unknown): Project {
       const record = assertPlainObject(value, 'project');
-      validateAllowedKeys(record, ['id', 'name', 'description', 'controlIdSettings', 'storageUsageBytes', 'createdAt', 'updatedAt'], 'project');
+      validateAllowedKeys(record, ['id', 'name', 'description', 'controlIdSettings', 'controlFrameworks', 'storageUsageBytes', 'createdAt', 'updatedAt'], 'project');
 
       return {
         id: validateSafeId(record.id, 'id'),
         name: validateString(record.name, 'name', MAX_PROJECT_NAME_LENGTH),
         description: validateOptionalString(record.description, 'description', MAX_DESCRIPTION_LENGTH),
         controlIdSettings: record.controlIdSettings === undefined ? undefined : validateControlIdSettings(record.controlIdSettings),
+        controlFrameworks: validateStringArray(record.controlFrameworks, 'controlFrameworks', MAX_SHORT_TEXT_LENGTH),
         storageUsageBytes: validateNonNegativeInteger(record.storageUsageBytes, 'storageUsageBytes', 10 * 1024 * 1024 * 1024),
         createdAt: validateIsoDate(record.createdAt, 'createdAt'),
         updatedAt: validateIsoDate(record.updatedAt, 'updatedAt'),
@@ -465,7 +466,7 @@ const MAX_SHORT_TEXT_LENGTH = 255;
 
     export function validateControl(value: unknown): Control {
       const record = assertPlainObject(value, 'control');
-      validateAllowedKeys(record, ['id', 'projectId', 'controlId', 'name', 'objective', 'description', 'frequency', 'controlType', 'owner', 'testMethod', 'linkedRiskIds', 'linkedRequirementIds', 'linkedEvidenceIds', 'implementationStatus', 'reviewSchedule', 'nextReviewDate', 'effectivenessRating', 'lastReviewDate', 'lastReviewResult', 'notes', 'createdAt', 'updatedAt'], 'control');
+      validateAllowedKeys(record, ['id', 'projectId', 'controlId', 'name', 'objective', 'description', 'frequency', 'controlType', 'owner', 'testMethod', 'linkedRiskIds', 'linkedFrameworks', 'linkedRequirementIds', 'linkedEvidenceIds', 'implementationStatus', 'reviewSchedule', 'nextReviewDate', 'effectivenessRating', 'lastReviewDate', 'lastReviewResult', 'notes', 'createdAt', 'updatedAt'], 'control');
 
       return {
         id: validateSafeId(record.id, 'id'),
@@ -479,6 +480,7 @@ const MAX_SHORT_TEXT_LENGTH = 255;
         owner: validateOptionalString(record.owner, 'owner', MAX_SHORT_TEXT_LENGTH),
         testMethod: validateString(record.testMethod, 'testMethod', MAX_DESCRIPTION_LENGTH),
         linkedRiskIds: validateStringArray(record.linkedRiskIds, 'linkedRiskIds', 128),
+        linkedFrameworks: validateStringArray(record.linkedFrameworks, 'linkedFrameworks', MAX_SHORT_TEXT_LENGTH),
         linkedRequirementIds: validateStringArray(record.linkedRequirementIds, 'linkedRequirementIds', 128),
         linkedEvidenceIds: validateStringArray(record.linkedEvidenceIds, 'linkedEvidenceIds', 128),
         implementationStatus: validateEnum(record.implementationStatus, 'implementationStatus', ['not_started', 'planned', 'implemented', 'partially_implemented', 'not_applicable']),

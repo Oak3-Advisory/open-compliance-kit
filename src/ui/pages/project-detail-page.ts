@@ -23,6 +23,8 @@ import { AssetDialog } from '../components/asset-dialog';
 import { RiskDialog } from '../components/risk-dialog';
 import { ControlDialog } from '../components/control-dialog';
 import { ReviewDialog } from '../components/review-dialog';
+import { NIST_CSF_20_CONTROLS, NIST_CSF_20_FRAMEWORK_NAME } from '../../frameworks/nist-csf-2.0';
+import { CIS_CSC_V81_CONTROLS, CIS_CSC_V81_FRAMEWORK_NAME } from '../../frameworks/cis-controls-v8.1';
 
 export interface ProjectDetailPageOptions {
   projectStore: ProjectStore;
@@ -62,6 +64,7 @@ export class ProjectDetailPage {
     padding: 3,
     nextSequence: 1,
   };
+  private controlFrameworks: string[] = ['ISO 27001', 'NIST CSF', 'SOC2', 'CIS Critical Security Controls'];
   private nextControlIdSuggestion = '';
 
   constructor(options: ProjectDetailPageOptions) {
@@ -569,6 +572,7 @@ export class ProjectDetailPage {
                   <th>Status</th>
                   <th>Owner</th>
                   <th>Linked Risks</th>
+                  <th>Frameworks</th>
                   <th>Linked ISO</th>
                   <th>Evidence</th>
                   <th>Actions</th>
@@ -590,6 +594,7 @@ export class ProjectDetailPage {
                     </td>
                     <td>${this.escapeHtml(control.owner || '—')}</td>
                     <td>${control.linkedRiskIds?.length || 0} risk(s)</td>
+                    <td>${this.renderFrameworkSummary(control.linkedFrameworks)}</td>
                     <td>${control.linkedRequirementIds?.length || 0} req(s)</td>
                     <td>${this.renderEvidenceLinkBadge(control.linkedEvidenceIds?.length || 0)}</td>
                     <td>
@@ -696,6 +701,40 @@ export class ProjectDetailPage {
               <button type="submit" class="btn btn-primary">Save Numbering Settings</button>
             </div>
           </form>
+        </div>
+
+        <div class="settings-section">
+          <h2>Control Frameworks</h2>
+          <p class="text-muted">Define framework options available when mapping controls. You can add your own frameworks.</p>
+          <form id="control-frameworks-form" class="scope-form">
+            <div class="form-group">
+              <label for="control-frameworks-list">Framework List</label>
+              <textarea
+                id="control-frameworks-list"
+                name="frameworks"
+                rows="6"
+                maxlength="2000"
+                placeholder="One framework per line (e.g., ISO 27001)"
+                required
+              >${this.escapeHtml(this.controlFrameworks.join('\n'))}</textarea>
+              <p class="form-hint">Default examples: ISO 27001, NIST CSF, SOC2, CIS Critical Security Controls.</p>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Framework Settings</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="settings-section">
+          <h2>Framework Control Imports</h2>
+          <p class="text-muted">Import starter control sets into this ISMS project only when you choose. Nothing is added by default.</p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="btn-import-nist-csf">Import NIST CSF 2.0 Controls</button>
+            <button type="button" class="btn btn-secondary" id="btn-import-cis">Import CIS Controls v8.1</button>
+          </div>
+          <p class="form-hint">Imports ${NIST_CSF_20_CONTROLS.length} controls and links each control to ${NIST_CSF_20_FRAMEWORK_NAME}.</p>
+          <p class="form-hint">Imports ${CIS_CSC_V81_CONTROLS.length} safeguards and links each control to ${CIS_CSC_V81_FRAMEWORK_NAME}.</p>
         </div>
       </div>
     `;
@@ -869,6 +908,18 @@ export class ProjectDetailPage {
     return this.renderEvidenceLinkBadge(usageCount);
   }
 
+  private renderFrameworkSummary(frameworks?: string[]): string {
+    if (!frameworks || frameworks.length === 0) {
+      return '—';
+    }
+
+    if (frameworks.length === 1) {
+      return this.escapeHtml(frameworks[0]);
+    }
+
+    return this.escapeHtml(`${frameworks[0]} +${frameworks.length - 1}`);
+  }
+
   private getRiskStatusClass(status: Risk['status']): string {
     switch (status) {
       case 'identified':
@@ -969,6 +1020,9 @@ export class ProjectDetailPage {
         padding: 3,
         nextSequence: 1,
       };
+      this.controlFrameworks = this.project?.controlFrameworks?.length
+        ? this.project.controlFrameworks
+        : ['ISO 27001', 'NIST CSF', 'SOC2', 'CIS Critical Security Controls'];
       this.orgProfile = await this.projectStore.getOrganizationProfile(this.projectId);
       this.ismScope = await this.projectStore.getIsmScope(this.projectId);
       this.assets = await this.projectStore.getAssets(this.projectId);
@@ -1041,6 +1095,21 @@ export class ProjectDetailPage {
     if (controlIdSettingsForm) {
       controlIdSettingsForm.addEventListener('submit', (e) => this.handleControlIdSettingsSubmit(e));
     }
+
+    const controlFrameworksForm = tabsContent.querySelector('#control-frameworks-form');
+    if (controlFrameworksForm) {
+      controlFrameworksForm.addEventListener('submit', (e) => this.handleControlFrameworksSubmit(e));
+    }
+
+    const importNistBtn = tabsContent.querySelector('#btn-import-nist-csf');
+    importNistBtn?.addEventListener('click', () => {
+      this.handleImportNistControls();
+    });
+
+    const importCisBtn = tabsContent.querySelector('#btn-import-cis');
+    importCisBtn?.addEventListener('click', () => {
+      this.handleImportCisControls();
+    });
 
     // Edit scope button
     const editScopeBtn = tabsContent.querySelector('#btn-edit-scope');
@@ -1374,6 +1443,7 @@ export class ProjectDetailPage {
       projectId: this.projectId,
       risks: this.risks,
       documents: this.documents,
+      frameworks: this.controlFrameworks,
       controlIdSettings: this.controlIdSettings,
       suggestedControlId: this.nextControlIdSuggestion,
       onSuccess: () => {
@@ -1404,6 +1474,7 @@ export class ProjectDetailPage {
       control,
       risks: this.risks,
       documents: this.documents,
+      frameworks: this.controlFrameworks,
       controlIdSettings: this.controlIdSettings,
       suggestedControlId: this.nextControlIdSuggestion,
       onSuccess: () => {
@@ -1494,6 +1565,85 @@ export class ProjectDetailPage {
     } catch (error) {
       console.error('Failed to save control ID settings:', error);
       alert(error instanceof Error ? error.message : 'Failed to save control ID settings');
+    }
+  }
+
+  private async handleControlFrameworksSubmit(e: Event): Promise<void> {
+    e.preventDefault();
+
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const rawFrameworks = (formData.get('frameworks') as string || '').trim();
+
+    const frameworks = rawFrameworks
+      .split('\n')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+
+    if (frameworks.length === 0) {
+      alert('Add at least one framework');
+      return;
+    }
+
+    try {
+      await this.projectStore.updateControlFrameworks(this.projectId, frameworks);
+      await this.loadProjectData();
+      this.rerender();
+    } catch (error) {
+      console.error('Failed to save control frameworks:', error);
+      alert(error instanceof Error ? error.message : 'Failed to save control frameworks');
+    }
+  }
+
+  private async handleImportNistControls(): Promise<void> {
+    const confirmed = confirm(
+      `Import ${NIST_CSF_20_CONTROLS.length} ${NIST_CSF_20_FRAMEWORK_NAME} controls into this project? Existing control IDs will be skipped.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const result = await this.projectStore.importFrameworkControls(
+        this.projectId,
+        NIST_CSF_20_FRAMEWORK_NAME,
+        NIST_CSF_20_CONTROLS
+      );
+
+      await this.loadProjectData();
+      this.rerender();
+
+      alert(`Import complete. Created: ${result.created}, skipped existing: ${result.skipped}.`);
+    } catch (error) {
+      console.error('Failed to import NIST CSF controls:', error);
+      alert(error instanceof Error ? error.message : 'Failed to import NIST CSF controls');
+    }
+  }
+
+  private async handleImportCisControls(): Promise<void> {
+    const confirmed = confirm(
+      `Import ${CIS_CSC_V81_CONTROLS.length} ${CIS_CSC_V81_FRAMEWORK_NAME} safeguards into this project? Existing control IDs will be skipped.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const result = await this.projectStore.importFrameworkControls(
+        this.projectId,
+        CIS_CSC_V81_FRAMEWORK_NAME,
+        CIS_CSC_V81_CONTROLS
+      );
+
+      await this.loadProjectData();
+      this.rerender();
+
+      alert(`Import complete. Created: ${result.created}, skipped existing: ${result.skipped}.`);
+    } catch (error) {
+      console.error('Failed to import CIS controls:', error);
+      alert(error instanceof Error ? error.message : 'Failed to import CIS controls');
     }
   }
 

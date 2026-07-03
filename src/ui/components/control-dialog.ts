@@ -5,6 +5,7 @@ interface ControlDialogOptions {
   projectStore: ProjectStore;
   projectId: string;
   risks?: Risk[];
+  frameworks?: string[];
   onSuccess?: (controlId: string) => void;
   onCancel?: () => void;
   control?: Control;
@@ -19,6 +20,7 @@ export class ControlDialog {
   private projectStore: ProjectStore;
   private projectId: string;
   private risks: Risk[];
+  private frameworks: string[];
   private onSuccess: ((controlId: string) => void) | null;
   private onCancel: (() => void) | null;
   private control: Control | null;
@@ -30,6 +32,7 @@ export class ControlDialog {
     this.projectStore = options.projectStore;
     this.projectId = options.projectId;
     this.risks = options.risks || [];
+    this.frameworks = options.frameworks || [];
     this.onSuccess = options.onSuccess || null;
     this.onCancel = options.onCancel || null;
     this.control = options.control || null;
@@ -197,6 +200,18 @@ export class ControlDialog {
             </div>
 
             <div class="form-group">
+              <label for="control-linked-frameworks">Linked Frameworks</label>
+              <select id="control-linked-frameworks" name="linkedFrameworks" multiple size="4">
+                ${this.frameworks
+                  .map(
+                    (framework) => `<option value="${this.escapeHtml(framework)}" ${this.control?.linkedFrameworks?.includes(framework) ? 'selected' : ''}>${this.escapeHtml(framework)}</option>`
+                  )
+                  .join('')}
+              </select>
+              <p class="form-hint">Hold Cmd/Ctrl to select multiple frameworks. Manage options in project settings.</p>
+            </div>
+
+            <div class="form-group">
               <label for="control-linked-requirements">Linked ISO Requirement IDs</label>
               <input
                 type="text"
@@ -250,6 +265,8 @@ export class ControlDialog {
 
     const linkedRisksSelect = this.dialogElement.querySelector('#control-linked-risks') as HTMLSelectElement;
     const linkedRiskIds = Array.from(linkedRisksSelect?.selectedOptions || []).map((option) => option.value);
+    const linkedFrameworksSelect = this.dialogElement.querySelector('#control-linked-frameworks') as HTMLSelectElement;
+    const linkedFrameworks = Array.from(linkedFrameworksSelect?.selectedOptions || []).map((option) => option.value);
     const linkedEvidenceSelect = this.dialogElement.querySelector('#control-linked-evidence') as HTMLSelectElement;
     const linkedEvidenceIds = Array.from(linkedEvidenceSelect?.selectedOptions || []).map((option) => option.value);
     const linkedRequirementsRaw = (formData.get('linkedRequirements') as string || '').trim();
@@ -329,6 +346,7 @@ export class ControlDialog {
           testMethod,
           implementationStatus,
           linkedRiskIds,
+          linkedFrameworks,
           linkedRequirementIds,
           linkedEvidenceIds,
         });
@@ -345,6 +363,7 @@ export class ControlDialog {
           testMethod,
           implementationStatus,
           linkedRiskIds,
+          linkedFrameworks,
           linkedRequirementIds,
           linkedEvidenceIds,
         });
