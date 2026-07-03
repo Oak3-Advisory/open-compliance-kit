@@ -127,7 +127,7 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for archi
 
 ## License
 
-(License to be specified)
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## Support
 
