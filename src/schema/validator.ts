@@ -393,7 +393,7 @@ const MAX_SHORT_TEXT_LENGTH = 255;
               'ready_for_review',
               'audit_ready',
               'archived',
-            ]),
+            ]) as Project['lifecycleStatus'],
         controlIdSettings: record.controlIdSettings === undefined ? undefined : validateControlIdSettings(record.controlIdSettings),
         controlFrameworks: validateStringArray(record.controlFrameworks, 'controlFrameworks', MAX_SHORT_TEXT_LENGTH),
         storageUsageBytes: validateNonNegativeInteger(record.storageUsageBytes, 'storageUsageBytes', 10 * 1024 * 1024 * 1024),
@@ -572,13 +572,19 @@ const MAX_SHORT_TEXT_LENGTH = 255;
 
     export function validateActionItem(value: unknown): ActionItem {
       const record = assertPlainObject(value, 'actionItem');
-      validateAllowedKeys(record, ['id', 'projectId', 'title', 'description', 'status', 'owner', 'dueDate', 'linkedEvidenceIds', 'createdAt', 'updatedAt'], 'actionItem');
+      validateAllowedKeys(record, ['id', 'projectId', 'externalId', 'title', 'description', 'source', 'reference', 'priority', 'status', 'owner', 'dueDate', 'linkedEvidenceIds', 'createdAt', 'updatedAt'], 'actionItem');
 
       return {
         id: validateSafeId(record.id, 'id'),
         projectId: validateSafeId(record.projectId, 'projectId'),
+        externalId: validateOptionalString(record.externalId, 'externalId', MAX_SHORT_TEXT_LENGTH),
         title: validateString(record.title, 'title', MAX_PROJECT_NAME_LENGTH),
         description: validateOptionalString(record.description, 'description', MAX_DESCRIPTION_LENGTH),
+        source: validateOptionalString(record.source, 'source', MAX_SHORT_TEXT_LENGTH),
+        reference: validateOptionalString(record.reference, 'reference', MAX_SHORT_TEXT_LENGTH),
+        priority: record.priority === undefined
+          ? undefined
+          : validateEnum(record.priority, 'priority', ['low', 'medium', 'high', 'critical']) as ActionItem['priority'],
         status: validateEnum(record.status, 'status', ['open', 'in_progress', 'completed', 'blocked']),
         owner: validateOptionalString(record.owner, 'owner', MAX_SHORT_TEXT_LENGTH),
         dueDate: validateOptionalDate(record.dueDate, 'dueDate'),

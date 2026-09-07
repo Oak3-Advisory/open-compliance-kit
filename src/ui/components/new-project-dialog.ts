@@ -252,7 +252,7 @@ export class NewProjectDialog {
     const backBtn = form.querySelector('#btn-back');
     backBtn?.addEventListener('click', () => {
       this.persistStepInputs(form);
-      this.currentStep = Math.max(1, (this.currentStep - 1) as WizardStep);
+      this.currentStep = Math.max(1, this.currentStep - 1) as WizardStep;
       this.renderStep();
     });
 
@@ -266,7 +266,7 @@ export class NewProjectDialog {
       }
 
       this.clearErrors();
-      this.currentStep = Math.min(6, (this.currentStep + 1) as WizardStep);
+      this.currentStep = Math.min(6, this.currentStep + 1) as WizardStep;
       this.renderStep();
     });
 
