@@ -16,6 +16,7 @@ import type {
   Control,
   DocumentManifest,
   ControlReview,
+  ActionItem,
 } from '../../types';
 import type { ProjectStore } from '../../state/projectStore';
 import { formatDate, formatBytes } from '../../utils/helpers';
@@ -32,7 +33,7 @@ export interface ProjectDetailPageOptions {
   onBack?: () => void;
 }
 
-type TabName = 'overview' | 'scope' | 'assets' | 'risks' | 'controls' | 'evidence' | 'reviews' | 'settings';
+type TabName = 'overview' | 'scope' | 'assets' | 'risks' | 'controls' | 'evidence' | 'reviews' | 'actions' | 'settings';
 
 export class ProjectDetailPage {
   private container: HTMLElement | null = null;
@@ -46,6 +47,7 @@ export class ProjectDetailPage {
   private controls: Control[] = [];
   private documents: DocumentManifest[] = [];
   private reviews: ControlReview[] = [];
+  private actions: ActionItem[] = [];
   private storageEstimate: { usage: number; quota: number; percentUsed: number } | null = null;
   private currentTab: TabName = 'overview';
   private showOrganizationForm = false;
@@ -135,6 +137,10 @@ export class ProjectDetailPage {
                     data-tab="reviews" role="tab">
               Reviews
             </button>
+            <button class="tab-button ${this.currentTab === 'actions' ? 'active' : ''}" 
+                    data-tab="actions" role="tab">
+              Actions
+            </button>
             <button class="tab-button ${this.currentTab === 'settings' ? 'active' : ''}" 
                     data-tab="settings" role="tab">
               Settings
@@ -168,6 +174,8 @@ export class ProjectDetailPage {
         return this.renderEvidenceTab();
       case 'reviews':
         return this.renderReviewsTab();
+      case 'actions':
+        return this.renderActionsTab();
       case 'settings':
         return this.renderSettingsTab();
       default:
@@ -878,6 +886,125 @@ export class ProjectDetailPage {
     `;
   }
 
+  private renderActionsTab(): string {
+    const today = new Date().toISOString().slice(0, 10);
+    const openCount = this.actions.filter((action) => action.status === 'open').length;
+    const inProgressCount = this.actions.filter((action) => action.status === 'in_progress').length;
+    const overdueCount = this.actions.filter((action) =>
+      action.dueDate && action.status !== 'completed' && action.dueDate < today
+    ).length;
+    const priorityOrder: Record<NonNullable<ActionItem['priority']>, number> = {
+      critical: 0,
+      high: 1,
+      medium: 2,
+      low: 3,
+    };
+    const sortedActions = [...this.actions].sort((left, right) => {
+      const priorityDifference = priorityOrder[left.priority || 'medium'] - priorityOrder[right.priority || 'medium'];
+      if (priorityDifference !== 0) return priorityDifference;
+      return (left.dueDate || '9999-12-31').localeCompare(right.dueDate || '9999-12-31');
+    });
+
+    const actionsHtml = sortedActions.length === 0
+      ? '<div class="empty-state"><h3>No actions yet</h3><p>Create an action to start tracking remediation work.</p></div>'
+      : `
+        <div class="list-table action-plan-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Source</th>
+                <th>Priority</th>
+                <th>Owner</th>
+                <th>Due</th>
+                <th>Status</th>
+                <th>Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedActions.map((action) => `
+                <tr data-action-id="${action.id}">
+                  <td>
+                    <strong>${this.escapeHtml(action.externalId ? `${action.externalId} ${action.title}` : action.title)}</strong>
+                    ${action.description ? `<details><summary>Details</summary><p>${this.escapeHtml(action.description)}</p></details>` : ''}
+                  </td>
+                  <td>${this.escapeHtml([action.source, action.reference].filter(Boolean).join(' / ') || '—')}</td>
+                  <td>
+                    <select class="action-priority" aria-label="Action priority">
+                      ${['low', 'medium', 'high', 'critical'].map((value) => `<option value="${value}" ${(action.priority || 'medium') === value ? 'selected' : ''}>${this.formatEnumLabel(value)}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td><input class="action-owner" type="text" maxlength="200" value="${this.escapeAttribute(action.owner || '')}" placeholder="Assign owner" /></td>
+                  <td><input class="action-due-date" type="date" value="${this.escapeAttribute(action.dueDate || '')}" /></td>
+                  <td>
+                    <select class="action-status" aria-label="Action status">
+                      ${['open', 'in_progress', 'completed', 'blocked'].map((value) => `<option value="${value}" ${action.status === value ? 'selected' : ''}>${this.formatEnumLabel(value)}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td class="action-row-buttons">
+                    <button class="btn btn-sm btn-secondary action-save" data-action-id="${action.id}">Save</button>
+                    <button class="btn btn-sm btn-danger action-delete" data-action-id="${action.id}">Delete</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+    return `
+      <div class="tab-pane actions-tab">
+        <h2>Action Plan</h2>
+        <p class="text-muted">Assign owners and due dates, track progress, and retain source references for audit traceability.</p>
+        <div class="action-plan-summary">
+          <span><strong>${this.actions.length}</strong> total</span>
+          <span><strong>${openCount}</strong> open</span>
+          <span><strong>${inProgressCount}</strong> in progress</span>
+          <span><strong>${overdueCount}</strong> overdue</span>
+        </div>
+        <form id="action-create-form" class="action-create-form">
+          <div class="form-group action-field-wide">
+            <label for="action-title">Action</label>
+            <input id="action-title" name="title" maxlength="200" required />
+          </div>
+          <div class="form-group">
+            <label for="action-reference">Reference</label>
+            <input id="action-reference" name="reference" maxlength="200" placeholder="e.g. audit finding or control ID" />
+          </div>
+          <div class="form-group">
+            <label for="action-source">Source</label>
+            <input id="action-source" name="source" maxlength="200" placeholder="e.g. internal audit" />
+          </div>
+          <div class="form-group">
+            <label for="action-owner">Owner</label>
+            <input id="action-owner" name="owner" maxlength="200" />
+          </div>
+          <div class="form-group">
+            <label for="action-due-date">Due date</label>
+            <input id="action-due-date" name="dueDate" type="date" />
+          </div>
+          <div class="form-group">
+            <label for="action-priority">Priority</label>
+            <select id="action-priority" name="priority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-group action-field-wide">
+            <label for="action-description">Description</label>
+            <textarea id="action-description" name="description" rows="3" maxlength="10000"></textarea>
+          </div>
+          <div class="form-actions action-field-wide">
+            <button type="submit" class="btn btn-primary">Add Action</button>
+          </div>
+        </form>
+        ${actionsHtml}
+      </div>
+    `;
+  }
+
   private formatEnumLabel(value: string): string {
     return value
       .replace(/_/g, ' ')
@@ -982,6 +1109,10 @@ export class ProjectDetailPage {
     return div.innerHTML;
   }
 
+  private escapeAttribute(text: string): string {
+    return this.escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   /**
    * Mount page to DOM and attach event listeners
    */
@@ -1031,6 +1162,7 @@ export class ProjectDetailPage {
       this.nextControlIdSuggestion = await this.projectStore.getNextControlIdSuggestion(this.projectId);
       this.documents = await this.projectStore.getDocuments(this.projectId);
       this.reviews = await this.projectStore.getControlReviews(this.projectId);
+      this.actions = await this.projectStore.getActions(this.projectId);
       this.storageEstimate = await this.projectStore.getStorageEstimate();
     } catch (error) {
       console.error('Failed to load project data:', error);
@@ -1206,6 +1338,24 @@ export class ProjectDetailPage {
         if (reviewId) this.handleDeleteReview(reviewId);
       });
     });
+
+    const actionCreateForm = tabsContent.querySelector('#action-create-form');
+    actionCreateForm?.addEventListener('submit', (event) => this.handleCreateAction(event));
+
+    tabsContent.querySelectorAll('.action-save').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        const actionId = (event.currentTarget as HTMLElement).getAttribute('data-action-id');
+        const row = (event.currentTarget as HTMLElement).closest('tr');
+        if (actionId && row) this.handleUpdateAction(actionId, row);
+      });
+    });
+
+    tabsContent.querySelectorAll('.action-delete').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        const actionId = (event.currentTarget as HTMLElement).getAttribute('data-action-id');
+        if (actionId) this.handleDeleteAction(actionId);
+      });
+    });
   }
 
   /**
@@ -1214,6 +1364,64 @@ export class ProjectDetailPage {
   private switchTab(tabName: TabName): void {
     this.currentTab = tabName;
     this.rerender();
+  }
+
+  private async handleCreateAction(event: Event): Promise<void> {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const title = (formData.get('title') as string || '').trim();
+    if (!title) {
+      alert('Action title is required');
+      return;
+    }
+
+    try {
+      await this.projectStore.createAction(this.projectId, {
+        title,
+        description: (formData.get('description') as string || '').trim() || undefined,
+        source: (formData.get('source') as string || '').trim() || undefined,
+        reference: (formData.get('reference') as string || '').trim() || undefined,
+        priority: (formData.get('priority') as ActionItem['priority']) || 'medium',
+        owner: (formData.get('owner') as string || '').trim() || undefined,
+        dueDate: (formData.get('dueDate') as string || '').trim() || undefined,
+        status: 'open',
+      });
+      form.reset();
+      await this.loadProjectData();
+      this.rerender();
+    } catch (error) {
+      console.error('Failed to create action:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create action');
+    }
+  }
+
+  private async handleUpdateAction(actionId: string, row: Element): Promise<void> {
+    const owner = (row.querySelector('.action-owner') as HTMLInputElement | null)?.value.trim() || undefined;
+    const dueDate = (row.querySelector('.action-due-date') as HTMLInputElement | null)?.value || undefined;
+    const priority = (row.querySelector('.action-priority') as HTMLSelectElement | null)?.value as ActionItem['priority'];
+    const status = (row.querySelector('.action-status') as HTMLSelectElement | null)?.value as ActionItem['status'];
+
+    try {
+      await this.projectStore.updateAction(this.projectId, actionId, { owner, dueDate, priority, status });
+      await this.loadProjectData();
+      this.rerender();
+    } catch (error) {
+      console.error('Failed to update action:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update action');
+    }
+  }
+
+  private async handleDeleteAction(actionId: string): Promise<void> {
+    if (!confirm('Delete this action?')) return;
+    try {
+      await this.projectStore.deleteAction(this.projectId, actionId);
+      await this.loadProjectData();
+      this.rerender();
+    } catch (error) {
+      console.error('Failed to delete action:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete action');
+    }
   }
 
   /**

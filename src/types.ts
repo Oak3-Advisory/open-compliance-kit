@@ -175,8 +175,12 @@ export interface Finding {
 export interface ActionItem {
   id: string;
   projectId: string;
+  externalId?: string;
   title: string;
   description?: string;
+  source?: string;
+  reference?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
   status: 'open' | 'in_progress' | 'completed' | 'blocked';
   owner?: string;
   dueDate?: string;

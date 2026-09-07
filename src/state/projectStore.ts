@@ -45,6 +45,7 @@ import {
   importVaultEncrypted,
 } from '../import-export/packageFormat';
 import type { FrameworkSeedControl } from '../frameworks/types';
+import type { ActionPlanSeed } from '../reviews/types';
 
 // Event emitter for store updates
 type ProjectStoreListener = (event: ProjectStoreEvent) => void;
@@ -55,6 +56,11 @@ export interface ProjectStoreEvent {
 }
 
 export interface FrameworkImportResult {
+  created: number;
+  skipped: number;
+}
+
+export interface ActionPlanImportResult {
   created: number;
   skipped: number;
 }
@@ -309,7 +315,7 @@ export class ProjectStore {
         continue;
       }
 
-      const description = `Imported from ${frameworkLabel} (${entry.function} / ${entry.category}).`;
+      const description = entry.description || `Imported from ${frameworkLabel} (${entry.function} / ${entry.category}).`;
       const control: Control = {
         id: generateId(),
         projectId,
@@ -319,14 +325,15 @@ export class ProjectStore {
         description,
         frequency: 'as_needed',
         controlType: 'preventive',
-        owner: undefined,
+        owner: entry.owner,
         testMethod: 'Review implementation evidence and operational effectiveness.',
         linkedRiskIds: [],
         linkedFrameworks: [frameworkLabel],
         linkedRequirementIds: [],
         linkedEvidenceIds: [],
-        implementationStatus: 'not_started',
+        implementationStatus: entry.implementationStatus || 'not_started',
         effectivenessRating: 'not_tested',
+        notes: entry.notes,
         createdAt: now,
         updatedAt: now,
       };
@@ -1911,8 +1918,12 @@ export class ProjectStore {
   }
 
   async createAction(projectId: string, input: {
+    externalId?: string;
     title: string;
     description?: string;
+    source?: string;
+    reference?: string;
+    priority?: ActionItem['priority'];
     status?: ActionItem['status'];
     owner?: string;
     dueDate?: string;
@@ -1922,8 +1933,12 @@ export class ProjectStore {
     const action: ActionItem = {
       id: generateId(),
       projectId,
+      externalId: input.externalId,
       title: input.title,
       description: input.description,
+      source: input.source,
+      reference: input.reference,
+      priority: input.priority,
       status: input.status || 'open',
       owner: input.owner,
       dueDate: input.dueDate,
@@ -1941,6 +1956,38 @@ export class ProjectStore {
     });
 
     return action;
+  }
+
+  async importActionPlan(
+    projectId: string,
+    actionsToImport: ActionPlanSeed[]
+  ): Promise<ActionPlanImportResult> {
+    const existingActions = await this.getActions(projectId);
+    const existingExternalIds = new Set(
+      existingActions
+        .map((action) => action.externalId)
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.toUpperCase())
+    );
+    let created = 0;
+    let skipped = 0;
+
+    for (const seed of actionsToImport) {
+      if (existingExternalIds.has(seed.externalId.toUpperCase())) {
+        skipped += 1;
+        continue;
+      }
+      await this.createAction(projectId, seed);
+      existingExternalIds.add(seed.externalId.toUpperCase());
+      created += 1;
+    }
+
+    this.emit({
+      type: 'projectUpdated',
+      payload: { projectId, type: 'actionPlanImported', created, skipped },
+    });
+
+    return { created, skipped };
   }
 
   async getActions(projectId: string): Promise<ActionItem[]> {
